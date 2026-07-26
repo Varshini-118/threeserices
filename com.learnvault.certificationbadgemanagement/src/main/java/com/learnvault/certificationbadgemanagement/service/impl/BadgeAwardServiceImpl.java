@@ -43,18 +43,40 @@ public class BadgeAwardServiceImpl implements BadgeAwardService {
 
     @Override
     public List<BadgeAwardResponse> getAwardsByLearner(Integer learnerId) {
-        log.info("Fetching badge awards for learner: {}", learnerId);
-        return badgeAwardRepository.findByLearnerId(learnerId)
-                .stream()
-                .map(this::mapToResponse)
-                .collect(Collectors.toList());
+
+        try {
+
+            log.info("Fetching badge awards for learner: {}", learnerId);
+
+            List<BadgeAward> awards =
+                    badgeAwardRepository.findByLearnerId(learnerId);
+
+            System.out.println("AWARDS FOUND = " + awards.size());
+
+            return awards.stream()
+                    .map(this::mapToResponse)
+                    .collect(Collectors.toList());
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw e;
+        }
     }
 
     private BadgeAwardResponse mapToResponse(BadgeAward award) {
+
+        Integer badgeId = null;
+        String badgeName = null;
+
+        if (award.getBadge() != null) {
+            badgeId = award.getBadge().getBadgeId();
+            badgeName = award.getBadge().getName();
+        }
+
         return BadgeAwardResponse.builder()
                 .awardId(award.getAwardId())
-                .badgeId(award.getBadge().getBadgeId())
-                .badgeName(award.getBadge().getName())
+                .badgeId(badgeId)
+                .badgeName(badgeName)
                 .learnerId(award.getLearnerId())
                 .awardedDate(award.getAwardedDate())
                 .status(award.getStatus())

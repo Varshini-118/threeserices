@@ -3,6 +3,8 @@ package com.learnvault.certificationbadgemanagement.config;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -39,17 +41,34 @@ public class JwtUtil {
     }
 
     private Claims extractAllClaims(String token) {
-        return Jwts.parser()
-                .verifyWith((SecretKey) getSigningKey())
+        return Jwts.parserBuilder()
+                .setSigningKey(getSigningKey())
                 .build()
-                .parseSignedClaims(token)
-                .getPayload();
+                .parseClaimsJws(token)
+                .getBody();
     }
     public Boolean validateToken(String token) {
         try {
-            return !extractExpiration(token).before(new Date());
+
+            Date expiration = extractExpiration(token);
+
+            System.out.println("EXPIRATION = " + expiration);
+            System.out.println("CURRENT = " + new Date());
+
+            return !expiration.before(new Date());
+
         } catch (Exception e) {
+
+            System.out.println("JWT VALIDATION ERROR:");
+            e.printStackTrace();
+
             return false;
         }
+       
     }
+    @PostConstruct
+    public void printSecret() {
+        System.out.println("CBM SECRET = " + secret);
+    }
+
 }

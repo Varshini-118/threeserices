@@ -3,6 +3,7 @@ package com.learnvault.certificationbadgemanagement.config;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -19,27 +20,51 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+
         http
             .csrf(AbstractHttpConfigurer::disable)
+
+            .sessionManagement(session ->
+                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            )
+
             .authorizeHttpRequests(auth -> auth
-                // ADMIN can create badges, revoke certs, award badges
-                .requestMatchers("POST", "/api/badges").hasRole("ADMIN")
-                .requestMatchers("PATCH", "/api/certifications/*/revoke").hasRole("ADMIN")
-                .requestMatchers("POST", "/api/badge-awards").hasAnyRole("ADMIN")
-                // Anyone authenticated can view
-                .requestMatchers("GET", "/api/badges").authenticated()
-                .requestMatchers("GET", "/api/badges/**").authenticated()
-                .requestMatchers("GET", "/api/certifications").authenticated()
-                .requestMatchers("GET", "/api/certifications/**").authenticated()
-                .requestMatchers("GET", "/api/badge-awards").authenticated()
-                // POST certifications is called internally by ELP via Feign (permitAll for internal)
-                .requestMatchers("POST", "/api/certifications").permitAll()
+
+                // Badge Management
+                .requestMatchers(HttpMethod.POST, "/api/badges")
+                .hasRole("ADMIN")
+
+                .requestMatchers(HttpMethod.GET, "/api/badges/**")
+                .hasAnyRole("ADMIN", "INSTRUCTOR", "LEARNER")
+
+                // Certifications
+                .requestMatchers(HttpMethod.POST, "/api/certifications")
+                .permitAll()
+
+                .requestMatchers(HttpMethod.GET, "/api/certifications/**")
+                .hasAnyRole("ADMIN", "INSTRUCTOR", "LEARNER")
+
+                .requestMatchers(HttpMethod.PATCH,
+                        "/api/certifications/*/revoke")
+                .hasRole("ADMIN")
+
+                // Badge Awards
+                .requestMatchers(HttpMethod.POST, "/api/badge-awards")
+                .hasRole("ADMIN")
+
+                .requestMatchers(HttpMethod.GET, "/api/badge-awards")
+                .hasAnyRole("ADMIN", "INSTRUCTOR", "LEARNER")
+
+                .requestMatchers(HttpMethod.GET, "/api/badge-awards/**")
+                .hasAnyRole("ADMIN", "INSTRUCTOR", "LEARNER")
+
                 .anyRequest().authenticated()
             )
-            .sessionManagement(session -> session
-                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            )
-            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+
+            .addFilterBefore(
+                jwtFilter,
+                UsernamePasswordAuthenticationFilter.class
+            );
 
         return http.build();
     }
